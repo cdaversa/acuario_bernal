@@ -656,7 +656,6 @@ def exportar_sueltos():
     df.to_excel(file_name, index=False)
     return send_file(file_name, as_attachment=True)
 
-# --- IMPORTAR SUELTOS ---
 @app.route("/importar_sueltos", methods=["POST"])
 def importar_sueltos():
     if "usuario" not in session:
@@ -675,7 +674,7 @@ def importar_sueltos():
         flash("❌ El archivo debe contener las columnas: Nombre, Precio, Categoria", "danger")
         return redirect(url_for("sueltos"))
 
-    conn = get_connection()
+    conn = get_connection_sueltos()  # ✅ usar la base correcta
     cur = conn.cursor()
     filas_ok, filas_err = 0, 0
 
@@ -689,11 +688,13 @@ def importar_sueltos():
             existe = cur.fetchone()
 
             if existe:
-                cur.execute("UPDATE sueltos SET precio=?, categoria=? WHERE id=?", (precio, categoria, existe["id"]))
+                # ✅ acceder por índice si no hay row_factory
+                cur.execute("UPDATE sueltos SET precio=?, categoria=? WHERE id=?", (precio, categoria, existe[0]))
             else:
                 cur.execute("INSERT INTO sueltos (nombre, precio, categoria) VALUES (?, ?, ?)", (nombre, precio, categoria))
             filas_ok += 1
-        except:
+        except Exception as e:
+            print(f"Error con fila {row}: {e}")  # ✅ log para debug
             filas_err += 1
 
     conn.commit()
