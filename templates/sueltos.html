@@ -22,7 +22,7 @@
 <div id="tabla-sueltos">
   {% for categoria, lista in {'Perro':perros, 'Gato':gatos, 'Piedras':piedras}.items() %}
   <div class="categoria-block" data-categoria="{{ categoria|lower }}">
-    <h3 class="mt-4">{{ categoria }}</h3>
+    <h3 class="mt-2">{{ categoria }}</h3>
     <table class="table table-bordered">
       <thead><tr><th>Producto</th><th>Precio</th><th>Acciones</th></tr></thead>
       <tbody>
