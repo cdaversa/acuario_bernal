@@ -23,7 +23,7 @@
         <label for="precio_costo" class="form-label">Precio de Costo</label>
         <div class="input-group">
             <span class="input-group-text">$</span>
-            <input type="text" class="form-control" name="precio_costo" id="precio_costo" value="{{ p['precio_costo']|precio }}" required>
+            <input type="text" class="form-control" name="precio_costo" id="precio_costo" value="{{ p['precio_costo']|precio_sin_signo }}" required>
         </div>
     </div>
 

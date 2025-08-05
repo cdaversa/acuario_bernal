@@ -21,6 +21,13 @@ def format_precio(value):
     except:
         return value
 
+@app.template_filter('precio_sin_signo')
+def format_precio_sin_signo(value):
+    try:
+        return f"{float(value):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return value
+
 # --- FUNCIÓN PARA CONVERTIR PRECIOS A FLOAT ---
 def normalizar_precio(valor):
     """
@@ -114,6 +121,47 @@ def init_db_sueltos():
     conn.commit()
     conn.close()
 
+# --- CONEXIÓN DB LOGS ---
+LOG_DB = "logs.db"
+
+def get_connection_logs():
+    conn = sqlite3.connect(LOG_DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# --- Inicialización log.db ---
+
+def init_logs_table():
+    conn = get_connection_logs()
+    cur = conn.cursor()
+    # ✅ Crear la tabla solo con los campos necesarios
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT,
+            accion TEXT,
+            detalle TEXT,
+            fecha TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# --- Registrar SOLO ventas ---
+def registrar_log(usuario, producto, cantidad, total):
+    """
+    Registra solo las ventas de productos en logs.db
+    """
+    conn = get_connection_logs()
+    cur = conn.cursor()
+    fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    detalle = f"Venta de {cantidad} x {producto} - Total ${total:.2f}"
+    cur.execute("INSERT INTO logs (usuario, accion, detalle, fecha) VALUES (?, ?, ?, ?)",
+                (usuario, "VENTA", detalle, fecha))
+    conn.commit()
+    conn.close()
+
+
 # --- MIGRACIÓN DESDE JSON SI EXISTE ---
 def migrate_from_json():
     if os.path.exists(JSON_FILE):
@@ -165,6 +213,28 @@ def eliminar_producto(id):
     conn.commit()
     conn.close()
 
+def registrar_venta_por_nombre(nombre, cantidad):
+    conn = get_connection()
+    producto = conn.execute("SELECT * FROM productos WHERE nombre=?", (nombre,)).fetchone()
+
+    if not producto:
+        conn.close()
+        return False  # Producto no existe
+
+    if producto["cantidad"] < cantidad:
+        conn.close()
+        return None  # No hay stock suficiente
+
+    # ✅ Si hay stock, calcular total y registrar en logs
+    total = producto["precio_costo"] * cantidad
+    registrar_log(session.get("usuario", "Sistema"), producto["nombre"], cantidad, total)
+
+    # ✅ Actualizar stock
+    conn.execute("UPDATE productos SET cantidad = cantidad - ? WHERE nombre=?", (cantidad, nombre))
+    conn.commit()
+    conn.close()
+    return True
+
 # --- PEDIDOS ---
 def generar_pedidos():
     pedidos = {}
@@ -197,15 +267,13 @@ def obtener_sueltos():
 
 def agregar_suelto(nombre, precio, categoria):
     conn = get_connection_sueltos()
-    conn.execute("INSERT INTO sueltos (nombre, precio, categoria) VALUES (?, ?, ?)",
-                 (nombre, precio, categoria))
+    conn.execute("INSERT INTO sueltos (nombre, precio, categoria) VALUES (?, ?, ?)", (nombre, precio, categoria))
     conn.commit()
     conn.close()
 
 def actualizar_suelto(id, nombre, precio, categoria):
     conn = get_connection_sueltos()
-    conn.execute("UPDATE sueltos SET nombre=?, precio=?, categoria=? WHERE id=?",
-                 (nombre, precio, categoria, id))
+    conn.execute("UPDATE sueltos SET nombre=?, precio=?, categoria=? WHERE id=?", (nombre, precio, categoria, id))
     conn.commit()
     conn.close()
 
@@ -220,6 +288,8 @@ def obtener_suelto(id):
     suelto = conn.execute("SELECT * FROM sueltos WHERE id=?", (id,)).fetchone()
     conn.close()
     return suelto
+
+
 
 # --- RUTAS WEB ---
 @app.route("/")
@@ -363,14 +433,18 @@ def lista_precios():
 def vender(nombre, cantidad):
     if "usuario" not in session:
         return redirect(url_for("login"))
-    conn = get_connection()
-    cur = conn.cursor()
-    # Restar solo si hay stock suficiente
-    cur.execute("UPDATE productos SET cantidad = cantidad - ? WHERE nombre=? AND cantidad >= ?", (cantidad, nombre, cantidad))
-    conn.commit()
-    conn.close()
-    flash(f"✅ Se vendieron {cantidad} unidades de {nombre}.", "success")
+
+    resultado = registrar_venta_por_nombre(nombre, cantidad)
+
+    if resultado is False:
+        flash(f"❌ El producto '{nombre}' no existe.", "danger")
+    elif resultado is None:
+        flash(f"⚠️ No hay stock suficiente para vender {cantidad} unidades de {nombre}.", "warning")
+    else:
+        flash(f"✅ Se vendieron {cantidad} unidades de {nombre}.", "success")
+
     return redirect(url_for("lista_precios"))
+
 
 @app.route("/exportar_precios")
 def exportar_precios():
@@ -408,9 +482,10 @@ def backup():
             zipf.write(DB_NAME)
         if os.path.exists(DB_SUELTOS):
             zipf.write(DB_SUELTOS)
+        if os.path.exists(LOG_DB):  # ✅ Agregar logs.db al backup
+            zipf.write(LOG_DB)
 
     return send_file(backup_zip, as_attachment=True)
-
 
 # --- IMPORTAR EXCEL ---
 @app.route("/importar", methods=["GET", "POST"])
@@ -618,6 +693,12 @@ def sueltos():
 
     return render_template("sueltos.html", perros=perros, gatos=gatos, piedras=piedras)
 
+@app.route("/sueltos/configuracion")
+def configurar_sueltos():
+    if "usuario" not in session:
+        return redirect(url_for("login"))
+    return render_template("sueltos_config.html")
+
 @app.route("/editar_suelto/<int:id>", methods=["GET", "POST"])
 def editar_suelto(id):
     if "usuario" not in session:
@@ -656,7 +737,6 @@ def exportar_sueltos():
     df.to_excel(file_name, index=False)
     return send_file(file_name, as_attachment=True)
 
-# --- IMPORTAR SUELTOS ---
 @app.route("/importar_sueltos", methods=["POST"])
 def importar_sueltos():
     if "usuario" not in session:
@@ -675,7 +755,7 @@ def importar_sueltos():
         flash("❌ El archivo debe contener las columnas: Nombre, Precio, Categoria", "danger")
         return redirect(url_for("sueltos"))
 
-    conn = get_connection()
+    conn = get_connection_sueltos()  # ✅ usar la base correcta
     cur = conn.cursor()
     filas_ok, filas_err = 0, 0
 
@@ -689,11 +769,13 @@ def importar_sueltos():
             existe = cur.fetchone()
 
             if existe:
-                cur.execute("UPDATE sueltos SET precio=?, categoria=? WHERE id=?", (precio, categoria, existe["id"]))
+                # ✅ acceder por índice si no hay row_factory
+                cur.execute("UPDATE sueltos SET precio=?, categoria=? WHERE id=?", (precio, categoria, existe[0]))
             else:
                 cur.execute("INSERT INTO sueltos (nombre, precio, categoria) VALUES (?, ?, ?)", (nombre, precio, categoria))
             filas_ok += 1
-        except:
+        except Exception as e:
+            print(f"Error con fila {row}: {e}")  # ✅ log para debug
             filas_err += 1
 
     conn.commit()
@@ -702,8 +784,39 @@ def importar_sueltos():
     flash(f"✅ Importación completada: {filas_ok} registros actualizados/insertados, {filas_err} errores.", "success")
     return redirect(url_for("sueltos"))
 
+# --- RUTA PARA LOGS ---
+
+@app.route("/logs")
+def ver_logs():
+    if "usuario" not in session:
+        return redirect(url_for("login"))
+
+    desde = request.args.get("desde")
+    hasta = request.args.get("hasta")
+
+    conn = get_connection_logs()
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    query = "SELECT * FROM logs WHERE 1=1"
+    params = []
+
+    if desde:
+        query += " AND fecha >= ?"
+        params.append(desde + " 00:00:00")
+    if hasta:
+        query += " AND fecha <= ?"
+        params.append(hasta + " 23:59:59")
+
+    query += " ORDER BY fecha DESC"
+    logs = cur.execute(query, params).fetchall()
+    conn.close()
+
+    return render_template("logs.html", logs=logs)
+
 # --- MAIN ---
 if __name__ == "__main__":
     init_db()
     init_db_sueltos()  # ✅ crea la base de datos sueltos si no existe
+    init_logs_table()   # ✅ Inicializa la tabla logs
     app.run(debug=True)

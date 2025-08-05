@@ -5,7 +5,7 @@
 <h2>📦 Pedidos Pendientes</h2>
 
 {% if pedidos %}
-    {% for proveedor, lista in pedidos.items() %}
+    {% for proveedor, lista in pedidos|dictsort %}
         <h4>{{ proveedor }}</h4>
 
         <!-- ✅ Botón WhatsApp con icono oficial y siempre visible -->
