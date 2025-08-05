@@ -3,32 +3,8 @@
 {% block content %}
 <h2>🐾 Productos Sueltos</h2>
 
-<!-- ✅ BOTONES DE IMPORTAR / EXPORTAR -->
-<div class="mb-3">
-  <a href="{{ url_for('exportar_sueltos') }}" class="btn btn-outline-primary">📤 Exportar Excel</a>
-</div>
-
-<form action="{{ url_for('importar_sueltos') }}" method="post" enctype="multipart/form-data" class="mb-4">
-  <div class="input-group">
-    <input type="file" name="archivo_sueltos" class="form-control" accept=".xlsx" required>
-    <button class="btn btn-outline-success">📥 Importar Excel</button>
-  </div>
-</form>
-
-<!-- ✅ Formulario para agregar nuevo suelto -->
-<h4 class="mt-4">➕ Agregar Nuevo Producto Suelto</h4>
-<form action="{{ url_for('sueltos') }}" method="post" class="row g-3 mb-4">
-  <div class="col-md-4"><input type="text" name="nombre" class="form-control" placeholder="Nombre" required></div>
-  <div class="col-md-3"><input type="text" name="precio" class="form-control" placeholder="Precio" required></div>
-  <div class="col-md-3">
-    <select name="categoria" class="form-select" required>
-      <option value="perro">Perro</option>
-      <option value="gato">Gato</option>
-      <option value="piedras">Piedras</option>
-    </select>
-  </div>
-  <div class="col-md-2"><button class="btn btn-success w-100">➕ Agregar</button></div>
-</form>
+<!-- 🔗 Botón para ir a la pantalla de configuración -->
+<a href="{{ url_for('configurar_sueltos') }}" class="btn btn-warning mb-3">⚙️ Configuración (Importar / Exportar / Agregar)</a>
 
 <!-- ✅ Campo de búsqueda -->
 <h4 class="mt-4">🔍 Buscar Productos Sueltos</h4>
@@ -42,9 +18,9 @@
   <button class="btn btn-outline-secondary btn-filter" data-filter="piedras">Piedras</button>
 </div>
 
-<!-- ✅ Contenedor de tablas (una debajo de la otra) -->
+<!-- ✅ Contenedor de tablas (sin cambios en tu estructura original) -->
 <div id="tabla-sueltos">
-{% for categoria, lista in {'Perro':perros, 'Gato':gatos, 'Piedras':piedras}.items() %}
+  {% for categoria, lista in {'Perro':perros, 'Gato':gatos, 'Piedras':piedras}.items() %}
   <div class="categoria-block" data-categoria="{{ categoria|lower }}">
     <h3 class="mt-4">{{ categoria }}</h3>
     <table class="table table-bordered">
@@ -68,45 +44,34 @@
       </tbody>
     </table>
   </div>
-{% endfor %}
+  {% endfor %}
 </div>
 
 <script>
-// ✅ Buscador en tiempo real
+// ✅ (Se mantiene tu buscador y filtro sin cambios)
 document.getElementById("buscador_sueltos").addEventListener("keyup", function () {
     let filtro = this.value.toLowerCase();
-
     document.querySelectorAll("#tabla-sueltos .categoria-block").forEach(bloque => {
         let filas = bloque.querySelectorAll("tbody tr");
         let hayCoincidencia = false;
-
         filas.forEach(row => {
-            let texto = row.innerText.toLowerCase();
-            let visible = texto.includes(filtro) || filtro === "";
+            let visible = row.innerText.toLowerCase().includes(filtro) || filtro === "";
             row.style.display = visible ? "" : "none";
             if (visible) hayCoincidencia = true;
         });
-
         bloque.style.display = hayCoincidencia ? "" : "none";
     });
 });
 
-// ✅ Filtro por categoría
 document.querySelectorAll(".btn-filter").forEach(btn => {
     btn.addEventListener("click", () => {
         document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         const filtro = btn.dataset.filter;
-
         document.querySelectorAll(".categoria-block").forEach(block => {
-            if (filtro === "all" || block.dataset.categoria === filtro) {
-                block.style.display = "";
-            } else {
-                block.style.display = "none";
-            }
+            block.style.display = (filtro === "all" || block.dataset.categoria === filtro) ? "" : "none";
         });
     });
 });
 </script>
-
 {% endblock %}

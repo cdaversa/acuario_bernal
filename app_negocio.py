@@ -618,6 +618,12 @@ def sueltos():
 
     return render_template("sueltos.html", perros=perros, gatos=gatos, piedras=piedras)
 
+@app.route("/sueltos/configuracion")
+def configurar_sueltos():
+    if "usuario" not in session:
+        return redirect(url_for("login"))
+    return render_template("sueltos_config.html")
+
 @app.route("/editar_suelto/<int:id>", methods=["GET", "POST"])
 def editar_suelto(id):
     if "usuario" not in session:
