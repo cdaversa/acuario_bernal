@@ -6,7 +6,7 @@
 <!-- 🔹 Tarjetas resumen de totales -->
 <div class="row mb-3">
     <div class="col-md-4">
-        <div class="card bg-danger text-white text-center">
+        <div class="card resumen-card bg-danger text-white text-center">
             <div class="card-body">
                 <h5 class="card-title">Costo Total en Stock</h5>
                 <h3>{{ total_costo|precio }}</h3>
@@ -14,7 +14,7 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-primary text-white text-center">
+        <div class="card resumen-card bg-primary text-white text-center">
             <div class="card-body">
                 <h5 class="card-title">Valor de Venta Total</h5>
                 <h3>{{ total_venta|precio }}</h3>
@@ -22,7 +22,7 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card {% if ganancia < 0 %}bg-danger{% else %}bg-success{% endif %} text-white text-center">
+        <div class="card resumen-card {% if ganancia < 0 %}bg-danger{% else %}bg-success{% endif %} text-white text-center">
             <div class="card-body">
                 <h5 class="card-title">Ganancia Potencial</h5>
                 <h3>{{ ganancia|precio }}</h3>
