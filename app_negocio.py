@@ -784,9 +784,25 @@ def ver_logs():
     if "usuario" not in session:
         return redirect(url_for("login"))
 
+    desde = request.args.get("desde")
+    hasta = request.args.get("hasta")
+
     conn = get_connection_logs()
     conn.row_factory = sqlite3.Row
-    logs = conn.execute("SELECT * FROM logs ORDER BY fecha DESC").fetchall()
+    cur = conn.cursor()
+
+    query = "SELECT * FROM logs WHERE 1=1"
+    params = []
+
+    if desde:
+        query += " AND fecha >= ?"
+        params.append(desde + " 00:00:00")
+    if hasta:
+        query += " AND fecha <= ?"
+        params.append(hasta + " 23:59:59")
+
+    query += " ORDER BY fecha DESC"
+    logs = cur.execute(query, params).fetchall()
     conn.close()
 
     return render_template("logs.html", logs=logs)
