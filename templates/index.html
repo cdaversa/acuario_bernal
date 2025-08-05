@@ -17,7 +17,7 @@
         <div class="card bg-primary text-white text-center">
             <div class="card-body">
                 <h5 class="card-title">Valor de Venta Total</h5>
-                <h3>$ {{ total_venta|precio }}</h3>
+                <h3>{{ total_venta|precio }}</h3>
             </div>
         </div>
     </div>
@@ -25,7 +25,7 @@
         <div class="card {% if ganancia < 0 %}bg-danger{% else %}bg-success{% endif %} text-white text-center">
             <div class="card-body">
                 <h5 class="card-title">Ganancia Potencial</h5>
-                <h3>$ {{ ganancia|precio }}</h3>
+                <h3>{{ ganancia|precio }}</h3>
             </div>
         </div>
     </div>
