@@ -475,9 +475,10 @@ def backup():
             zipf.write(DB_NAME)
         if os.path.exists(DB_SUELTOS):
             zipf.write(DB_SUELTOS)
+        if os.path.exists(LOG_DB):  # ✅ Agregar logs.db al backup
+            zipf.write(LOG_DB)
 
     return send_file(backup_zip, as_attachment=True)
-
 
 # --- IMPORTAR EXCEL ---
 @app.route("/importar", methods=["GET", "POST"])
